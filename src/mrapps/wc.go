@@ -16,7 +16,7 @@ import "strconv"
 // file's complete contents. You should ignore the input file name,
 // and look only at the contents argument. The return value is a slice
 // of key/value pairs.
-func Map(filename string, contents string) []mr.KeyValue {
+func Map(filename, contents string) []mr.KeyValue {
 	// function to detect word separators.
 	ff := func(r rune) bool { return !unicode.IsLetter(r) }
 

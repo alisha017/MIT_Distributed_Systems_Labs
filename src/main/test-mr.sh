@@ -6,18 +6,19 @@
 
 # un-comment this to run the tests with the Go race detector.
 # RACE=-race
+echo '*** Start ******'
 
-if [[ "$OSTYPE" = "darwin"* ]]
-then
-  if go version | grep 'go1.17.[012345]'
-  then
-    # -race with plug-ins on x86 MacOS 12 with
-    # go1.17 before 1.17.6 sometimes crash.
-    RACE=
-    echo '*** Turning off -race since it may not work on a Mac'
-    echo '    with ' `go version`
-  fi
-fi
+#if [[ "$OSTYPE" = "darwin"* ]]
+#then
+#  if go version | grep 'go1.17.[012345]'
+#  then
+#    # -race with plug-ins on x86 MacOS 12 with
+#    # go1.17 before 1.17.6 sometimes crash.
+#    RACE=
+#    echo '*** Turning off -race since it may not work on a Mac'
+#    echo '    with ' `go version`
+#  fi
+#fi
 
 ISQUIET=$1
 maybe_quiet() {
@@ -27,8 +28,8 @@ maybe_quiet() {
       "$@"
     fi
 }
-
-
+#
+#
 TIMEOUT=timeout
 TIMEOUT2=""
 if timeout 2s sleep 1 > /dev/null 2>&1
@@ -57,6 +58,8 @@ mkdir mr-tmp || exit 1
 cd mr-tmp || exit 1
 rm -f mr-*
 
+echo '*** Starting fresh ******'
+
 # make sure software is freshly built.
 (cd ../../mrapps && go clean)
 (cd .. && go clean)
@@ -78,6 +81,9 @@ failed_any=0
 # first word-count
 
 # generate the correct output
+
+echo '*** mrsequential ******'
+
 ../mrsequential ../../mrapps/wc.so ../pg*txt || exit 1
 sort mr-out-0 > mr-correct-wc.txt
 rm -f mr-out*
@@ -101,6 +107,7 @@ wait $pid
 # since workers are required to exit when a job is completely finished,
 # and not before, that means the job has finished.
 sort mr-out* | grep . > mr-wc-all
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if cmp mr-wc-all mr-correct-wc.txt
 then
   echo '---' wc test: PASS
@@ -109,6 +116,7 @@ else
   echo '---' wc test: FAIL
   failed_any=1
 fi
+echo '-----------------------------------------------------------------------------------'
 
 # wait for remaining workers and coordinator to exit.
 wait
@@ -132,6 +140,7 @@ maybe_quiet $TIMEOUT ../mrworker ../../mrapps/indexer.so &
 maybe_quiet $TIMEOUT ../mrworker ../../mrapps/indexer.so
 
 sort mr-out* | grep . > mr-indexer-all
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if cmp mr-indexer-all mr-correct-indexer.txt
 then
   echo '---' indexer test: PASS
@@ -140,6 +149,8 @@ else
   echo '---' indexer test: FAIL
   failed_any=1
 fi
+echo '-----------------------------------------------------------------------------------'
+
 
 wait
 
@@ -154,6 +165,7 @@ sleep 1
 maybe_quiet $TIMEOUT ../mrworker ../../mrapps/mtiming.so &
 maybe_quiet $TIMEOUT ../mrworker ../../mrapps/mtiming.so
 
+echo '---------------------------------TEST RESULT-------------------------------------------'
 NT=`cat mr-out* | grep '^times-' | wc -l | sed 's/ //g'`
 if [ "$NT" != "2" ]
 then
@@ -170,9 +182,9 @@ else
   echo '---' map parallelism test: FAIL
   failed_any=1
 fi
+echo '----------------------------------------------------------------------------------'
 
 wait
-
 
 #########################################################
 echo '***' Starting reduce parallelism test.
@@ -186,6 +198,7 @@ maybe_quiet $TIMEOUT ../mrworker ../../mrapps/rtiming.so  &
 maybe_quiet $TIMEOUT ../mrworker ../../mrapps/rtiming.so
 
 NT=`cat mr-out* | grep '^[a-z] 2' | wc -l | sed 's/ //g'`
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if [ "$NT" -lt "2" ]
 then
   echo '---' too few parallel reduces.
@@ -194,6 +207,8 @@ then
 else
   echo '---' reduce parallelism test: PASS
 fi
+echo '------------------------------------------------------------------------------------'
+
 
 wait
 
@@ -211,6 +226,7 @@ maybe_quiet $TIMEOUT ../mrworker ../../mrapps/jobcount.so &
 maybe_quiet $TIMEOUT ../mrworker ../../mrapps/jobcount.so
 
 NT=`cat mr-out* | awk '{print $2}'`
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if [ "$NT" -eq "8" ]
 then
   echo '---' job count test: PASS
@@ -219,6 +235,8 @@ else
   echo '---' job count test: FAIL
   failed_any=1
 fi
+echo '-------------------------------------------------------------------------------------'
+
 
 wait
 
@@ -270,6 +288,7 @@ wait
 
 # compare initial and final outputs
 sort mr-out* | grep . > mr-wc-all-final
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if cmp mr-wc-all-final mr-wc-all-initial
 then
   echo '---' early exit test: PASS
@@ -279,6 +298,8 @@ else
   failed_any=1
 fi
 rm -f mr-*
+echo '-----------------------------------------------------------------------------------'
+
 
 #########################################################
 echo '***' Starting crash test.
@@ -320,6 +341,7 @@ wait
 
 rm $SOCKNAME
 sort mr-out* | grep . > mr-crash-all
+echo '---------------------------------TEST RESULT-------------------------------------------'
 if cmp mr-crash-all mr-correct-crash.txt
 then
   echo '---' crash test: PASS
@@ -328,6 +350,7 @@ else
   echo '---' crash test: FAIL
   failed_any=1
 fi
+echo '------------------------------------------------------------------------------------'
 
 #########################################################
 if [ $failed_any -eq 0 ]; then
